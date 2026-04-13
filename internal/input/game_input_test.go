@@ -3,7 +3,7 @@ package input_test
 import (
 	"testing"
 
-	"github.com/assemblaj/ggpo/internal/input"
+	"github.com/ikemen-engine/ggpo/internal/input"
 )
 
 func TestNewGameInput(t *testing.T) {

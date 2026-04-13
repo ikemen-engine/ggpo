@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/assemblaj/ggpo/internal/mocks"
+	"github.com/ikemen-engine/ggpo/internal/mocks"
 
-	"github.com/assemblaj/ggpo"
+	"github.com/ikemen-engine/ggpo"
 )
 
 func TestNewSyncTestBackend(t *testing.T) {

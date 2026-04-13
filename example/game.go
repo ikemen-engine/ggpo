@@ -11,7 +11,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/assemblaj/ggpo"
+	"github.com/ikemen-engine/ggpo"
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )

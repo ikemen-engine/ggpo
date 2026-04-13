@@ -11,7 +11,7 @@ import (
 	//	"net/http"
 	// _ "net/http/pprof"
 
-	"github.com/assemblaj/ggpo"
+	"github.com/ikemen-engine/ggpo"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 

@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/assemblaj/ggpo/internal/input"
-	"github.com/assemblaj/ggpo/internal/messages"
-	"github.com/assemblaj/ggpo/internal/mocks"
+	"github.com/ikemen-engine/ggpo/internal/input"
+	"github.com/ikemen-engine/ggpo/internal/messages"
+	"github.com/ikemen-engine/ggpo/internal/mocks"
 
-	"github.com/assemblaj/ggpo"
+	"github.com/ikemen-engine/ggpo"
 )
 
 /*

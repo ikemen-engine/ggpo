@@ -3,7 +3,7 @@ package buffer_test
 import (
 	"testing"
 
-	"github.com/assemblaj/ggpo/internal/buffer"
+	"github.com/ikemen-engine/ggpo/internal/buffer"
 )
 
 func TestNewStaticBuffer(t *testing.T) {

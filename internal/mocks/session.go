@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 
-	"github.com/assemblaj/ggpo"
-	"github.com/assemblaj/ggpo/internal/util"
+	"github.com/ikemen-engine/ggpo"
+	"github.com/ikemen-engine/ggpo/internal/util"
 )
 
 type FakeSession struct {

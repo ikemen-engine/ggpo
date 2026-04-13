@@ -3,7 +3,7 @@ package util_test
 import (
 	"testing"
 
-	"github.com/assemblaj/ggpo/internal/util"
+	"github.com/ikemen-engine/ggpo/internal/util"
 )
 
 func TestOrderedMapLenZero(t *testing.T) {

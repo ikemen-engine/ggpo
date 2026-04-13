@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/assemblaj/ggpo/internal/mocks"
-	"github.com/assemblaj/ggpo/internal/protocol"
-	"github.com/assemblaj/ggpo/transport"
+	"github.com/ikemen-engine/ggpo/internal/mocks"
+	"github.com/ikemen-engine/ggpo/internal/protocol"
+	"github.com/ikemen-engine/ggpo/transport"
 
-	"github.com/assemblaj/ggpo"
+	"github.com/ikemen-engine/ggpo"
 )
 
 func slice2dEqual(a [][]byte, b [][]byte) bool {

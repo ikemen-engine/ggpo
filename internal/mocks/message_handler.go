@@ -1,8 +1,8 @@
 package mocks
 
 import (
-	"github.com/assemblaj/ggpo/internal/messages"
-	"github.com/assemblaj/ggpo/internal/protocol"
+	"github.com/ikemen-engine/ggpo/internal/messages"
+	"github.com/ikemen-engine/ggpo/internal/protocol"
 )
 
 type FakeMessageHandler struct {

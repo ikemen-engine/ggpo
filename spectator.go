@@ -1,12 +1,12 @@
 package ggpo
 
 import (
-	"github.com/assemblaj/ggpo/internal/input"
-	"github.com/assemblaj/ggpo/internal/messages"
-	"github.com/assemblaj/ggpo/internal/polling"
-	"github.com/assemblaj/ggpo/internal/protocol"
-	"github.com/assemblaj/ggpo/internal/util"
-	"github.com/assemblaj/ggpo/transport"
+	"github.com/ikemen-engine/ggpo/internal/input"
+	"github.com/ikemen-engine/ggpo/internal/messages"
+	"github.com/ikemen-engine/ggpo/internal/polling"
+	"github.com/ikemen-engine/ggpo/internal/protocol"
+	"github.com/ikemen-engine/ggpo/internal/util"
+	"github.com/ikemen-engine/ggpo/transport"
 )
 
 const SpectatorFrameBufferSize int = 32

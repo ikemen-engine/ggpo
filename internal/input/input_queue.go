@@ -3,7 +3,7 @@ package input
 import (
 	"errors"
 
-	"github.com/assemblaj/ggpo/internal/util"
+	"github.com/ikemen-engine/ggpo/internal/util"
 )
 
 const (

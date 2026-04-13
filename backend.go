@@ -1,9 +1,9 @@
 package ggpo
 
 import (
-	"github.com/assemblaj/ggpo/internal/polling"
-	"github.com/assemblaj/ggpo/internal/protocol"
-	"github.com/assemblaj/ggpo/transport"
+	"github.com/ikemen-engine/ggpo/internal/polling"
+	"github.com/ikemen-engine/ggpo/internal/protocol"
+	"github.com/ikemen-engine/ggpo/transport"
 )
 
 /*

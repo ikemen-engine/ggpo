@@ -1,4 +1,4 @@
-module github.com/assemblaj/ggpo
+module github.com/ikemen-engine/ggpo
 
 go 1.18
 

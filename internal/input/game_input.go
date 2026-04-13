@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/assemblaj/ggpo/internal/util"
+	"github.com/ikemen-engine/ggpo/internal/util"
 )
 
 const (

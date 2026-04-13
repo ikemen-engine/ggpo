@@ -3,7 +3,7 @@ package polling_test
 import (
 	"testing"
 
-	"github.com/assemblaj/ggpo/internal/polling"
+	"github.com/ikemen-engine/ggpo/internal/polling"
 )
 
 type funcTimeType func() int64
