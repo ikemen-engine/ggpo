@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/ikemen-engine/ggpo/internal/input"
-	"github.com/ikemen-engine/ggpo/internal/messages"
-	"github.com/ikemen-engine/ggpo/internal/mocks"
-
 	"github.com/ikemen-engine/ggpo"
+	"github.com/ikemen-engine/ggpo/internal/input"
+	"github.com/ikemen-engine/ggpo/internal/mocks"
+	"github.com/ikemen-engine/ggpo/transport"
 )
 
 /*
@@ -17,7 +16,7 @@ Characterization Tests Basically
 func TestNewSync(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -36,7 +35,7 @@ func TestNewSync(t *testing.T) {
 func TestSyncLoadFrameCharacterization(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -55,7 +54,7 @@ func TestSyncLoadFrameCharacterization(t *testing.T) {
 func TestSyncIncrementFrame(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -74,7 +73,7 @@ func TestSyncIncrementFrame(t *testing.T) {
 func TestSyncAdustSimulationPanicIfSeekToUnsavedFrame(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -93,7 +92,7 @@ func TestSyncAdustSimulationPanicIfSeekToUnsavedFrame(t *testing.T) {
 func TestSyncAjdustSimulationError(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -115,7 +114,7 @@ func TestSyncAjdustSimulationError(t *testing.T) {
 func TestSyncAdjustSimulationSucess(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -137,7 +136,7 @@ func TestSyncAdjustSimulationSucess(t *testing.T) {
 func TestSyncAddLocalInput(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -160,7 +159,7 @@ func TestSyncAddLocalInput(t *testing.T) {
 func TestSyncAddLocalInputAfterIncrementFrame(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -188,7 +187,7 @@ func TestSyncAddLocalInputAfterIncrementFrame(t *testing.T) {
 func TestSyncSynchronizeInputsNoInput(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -218,7 +217,7 @@ func TestSyncSynchronizeInputsNoInput(t *testing.T) {
 func TestSyncSynchronizeInputsWithLocalInputs(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -250,7 +249,7 @@ func TestSyncSynchronizeInputsWithLocalInputs(t *testing.T) {
 func TestSyncSynchronizeInputsWithRemoteInputs(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -277,7 +276,7 @@ func TestSyncSynchronizeInputsWithRemoteInputs(t *testing.T) {
 func TestSyncSynchronizeInputsWithBothInputs(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -310,7 +309,7 @@ func TestSyncSynchronizeInputsWithBothInputs(t *testing.T) {
 func TestSyncGetConfirmedInputs(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -344,7 +343,7 @@ func TestSyncGetConfirmedInputs(t *testing.T) {
 func TestSyncAddLocalInputPanic(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -370,7 +369,7 @@ func TestSyncAddLocalInputPanic(t *testing.T) {
 func TestSyncAddLocalInputNoPanic(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -389,7 +388,7 @@ func TestSyncAddLocalInputNoPanic(t *testing.T) {
 func TestSyncAddRemoteInputPanic(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -412,7 +411,7 @@ func TestSyncAddRemoteInputPanic(t *testing.T) {
 func TestSyncAddRemoteInputNoPanic(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -431,7 +430,7 @@ func TestSyncAddRemoteInputNoPanic(t *testing.T) {
 func TestSyncAddFrameDelay(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}
@@ -461,7 +460,7 @@ func TestSyncAddFrameDelay(t *testing.T) {
 func TestSyncUseAfterClose(t *testing.T) {
 	session := mocks.NewFakeSession()
 
-	peerConnection := []messages.UdpConnectStatus{
+	peerConnection := []transport.ConnectStatus{
 		{Disconnected: false, LastFrame: 12},
 		{Disconnected: false, LastFrame: 13},
 	}

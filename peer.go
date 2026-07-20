@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ikemen-engine/ggpo/internal/input"
-	"github.com/ikemen-engine/ggpo/internal/messages"
 	"github.com/ikemen-engine/ggpo/internal/polling"
 	"github.com/ikemen-engine/ggpo/internal/protocol"
 	"github.com/ikemen-engine/ggpo/internal/util"
@@ -24,9 +23,9 @@ type Peer struct {
 	session       Session
 	poll          polling.Poller
 	sync          Sync
-	connection    transport.Connection
-	endpoints     []protocol.UdpProtocol
-	spectators    []protocol.UdpProtocol
+	transport     transport.Transport
+	endpoints     []protocol.Protocol
+	spectators    []protocol.Protocol
 	numSpectators int
 	inputSize     int
 
@@ -38,9 +37,8 @@ type Peer struct {
 	disconnectTimeout     int
 	disconnectNotifyStart int
 
-	localConnectStatus []messages.UdpConnectStatus
+	localConnectStatus []transport.ConnectStatus
 
-	localPort              int
 	pendingChecksums       util.OrderedMap[int, uint32]
 	confirmedChecksums     util.OrderedMap[int, uint32]
 	confirmedChecksumFrame int
@@ -49,7 +47,7 @@ type Peer struct {
 }
 
 func NewPeer(cb Session,
-	localPort int, numPlayers int, inputSize int) Peer {
+	numPlayers int, inputSize int) Peer {
 	p := Peer{}
 	p.numPlayers = numPlayers
 	p.inputSize = inputSize
@@ -60,10 +58,7 @@ func NewPeer(cb Session,
 	var poll polling.Poll = polling.NewPoll()
 	p.poll = &poll
 
-	//p.udp = NewUdp(&p, localPort)
-	p.localPort = localPort
-
-	p.localConnectStatus = make([]messages.UdpConnectStatus, messages.UDPMsgMaxPlayers)
+	p.localConnectStatus = make([]transport.ConnectStatus, transport.MsgMaxPlayers)
 	for i := 0; i < len(p.localConnectStatus); i++ {
 		p.localConnectStatus[i].LastFrame = -1
 	}
@@ -74,15 +69,13 @@ func NewPeer(cb Session,
 	config.session = p.session
 	config.numPredictionFrames = MaxPredictionFrames
 	p.sync = NewSync(p.localConnectStatus, &config)
-	p.endpoints = make([]protocol.UdpProtocol, numPlayers)
-	p.spectators = make([]protocol.UdpProtocol, MaxSpectators)
+	p.endpoints = make([]protocol.Protocol, numPlayers)
+	p.spectators = make([]protocol.Protocol, MaxSpectators)
 	p.pendingChecksums = util.NewOrderedMap[int, uint32](16)
 	p.confirmedChecksums = util.NewOrderedMap[int, uint32](16)
 	p.messageChannel = make(chan transport.MessageChannelItem, 256)
-	//messages := make(chan UdpPacket)
-	//p.poll.RegisterLoop(&p.udp, nil )
-	//go p.udp.Read()
-	//go p.udp.ReadMsg(messages)
+	//go p.transport.Read()
+	//go p.transport.ReadMsg(messages)
 	//go p.OnMsg(messages)
 	return p
 }
@@ -109,7 +102,7 @@ func (p *Peer) Idle(timeout int, timeFunc ...polling.FuncTimeType) error {
 			p.poll.Pump(timeFunc[0])
 		}
 
-		p.PollUdpProtocolEvents()
+		p.PollProtocolEvents()
 		p.CheckDesync()
 
 		if !p.synchronizing {
@@ -271,21 +264,21 @@ a copy of the poll, a copy of our localConnectStatus (might want to send a point
 Setting the default disconnect timeout and disconnect notify
 And calling the synchronize method, which sends a sync request to that endpoint.
 */
-func (p *Peer) AddRemotePlayer(ip string, port int, queue int) {
+func (p *Peer) AddRemotePlayer(handle PlayerHandle, queue int) {
 	p.synchronizing = true
-	p.endpoints[queue] = protocol.NewUdpProtocol(p.connection, queue, ip, port, &p.localConnectStatus)
+	p.endpoints[queue] = protocol.NewProtocol(p.transport, queue, handle, &p.localConnectStatus)
 	// have to reqgister the loop from here or else the Poll won't see changed state
 	// that we've initiated.
 	p.poll.RegisterLoop(&(p.endpoints[queue]), nil)
 
 	// actually this Idle wouldn't run at all if it wasn't called from here.
-	//p.poll.RegisterLoop(&udp, nil)
+
 	p.endpoints[queue].SetDisconnectTimeout(p.disconnectTimeout)
 	p.endpoints[queue].SetDisconnectNotifyStart(p.disconnectNotifyStart)
 	p.endpoints[queue].Synchronize()
 }
 
-func (p *Peer) AddSpectator(ip string, port int) error {
+func (p *Peer) AddSpectator(handle PlayerHandle) error {
 	if p.numSpectators == MaxSpectators {
 		return Error{Code: ErrorCodeTooManySpectators, Name: "ErrorCodeTooManySpectators"}
 	}
@@ -295,7 +288,7 @@ func (p *Peer) AddSpectator(ip string, port int) error {
 	}
 	queue := p.numSpectators
 	p.numSpectators++
-	p.spectators[queue] = protocol.NewUdpProtocol(p.connection, queue+1000, ip, port, &p.localConnectStatus)
+	p.spectators[queue] = protocol.NewProtocol(p.transport, queue+1000, handle, &p.localConnectStatus)
 	p.poll.RegisterLoop(&(p.spectators[queue]), nil)
 	p.spectators[queue].SetDisconnectTimeout(p.disconnectTimeout)
 	p.spectators[queue].SetDisconnectNotifyStart(p.disconnectNotifyStart)
@@ -308,7 +301,7 @@ func (p *Peer) AddSpectator(ip string, port int) error {
 // Maps to top level API function
 func (p *Peer) AddPlayer(player *Player, handle *PlayerHandle) error {
 	if player.PlayerType == PlayerTypeSpectator {
-		return p.AddSpectator(player.Remote.IpAdress, player.Remote.Port)
+		return p.AddSpectator(player.Remote.Handle)
 	}
 
 	queue := player.PlayerNum - 1
@@ -318,7 +311,7 @@ func (p *Peer) AddPlayer(player *Player, handle *PlayerHandle) error {
 	*handle = p.QueueToPlayerHandle(queue)
 
 	if player.PlayerType == PlayerTypeRemote {
-		p.AddRemotePlayer(player.Remote.IpAdress, player.Remote.Port, queue)
+		p.AddRemotePlayer(player.Remote.Handle, queue)
 	}
 
 	return nil
@@ -437,7 +430,7 @@ func (p *Peer) AdvanceFrame(checksum uint32) error {
 }
 
 // Handles all the events  for all spactors and players. Done OnPoll
-func (p *Peer) PollUdpProtocolEvents() {
+func (p *Peer) PollProtocolEvents() {
 	for i := 0; i < p.numPlayers; i++ {
 		p.endpoints[i].StartPollLoop()
 		for {
@@ -445,7 +438,7 @@ func (p *Peer) PollUdpProtocolEvents() {
 			if err != nil {
 				break
 			} else {
-				err := p.OnUdpProtocolPeerEvent(evt, i)
+				err := p.OnProtocolPeerEvent(evt, i)
 				if err != nil {
 					panic(err)
 				}
@@ -459,27 +452,27 @@ func (p *Peer) PollUdpProtocolEvents() {
 			if err != nil {
 				break
 			} else {
-				p.OnUdpProtocolSpectatorEvent(evt, i)
+				p.OnProtocolSpectatorEvent(evt, i)
 			}
 		}
 	}
 }
 
-// Takes events that come from UdpProtocol and if they are input,
+// Takes events that come from Protocol and if they are input,
 // Sends remote input to Sync which adds it to its InputQueue
 // Also updates that lastFrame for this endpoint as the most
 // recently recived frame.
 // Disconnects if necesary
-func (p *Peer) OnUdpProtocolPeerEvent(evt *protocol.UdpProtocolEvent, queue int) error {
+func (p *Peer) OnProtocolPeerEvent(evt *protocol.ProtocolEvent, queue int) error {
 	handle := p.QueueToPlayerHandle(queue)
-	p.OnUdpProtocolEvent(evt, handle)
+	p.OnProtocolEvent(evt, handle)
 	switch evt.Type() {
 	case protocol.InputEvent:
 		if !p.localConnectStatus[queue].Disconnected {
 			currentRemoteFrame := p.localConnectStatus[queue].LastFrame
 			newRemoteFrame := evt.Input.Frame
 			if !(currentRemoteFrame == -1 || int32(newRemoteFrame) == (currentRemoteFrame+1)) {
-				return errors.New("ggpo Peer OnUdpProtocolPeerEvent : !(currentRemoteFrame == -1 || newRemoteFrame == (currentRemoteFrame+1)) ")
+				return errors.New("ggpo Peer OnProtocolPeerEvent : !(currentRemoteFrame == -1 || newRemoteFrame == (currentRemoteFrame+1)) ")
 			}
 
 			p.sync.AddRemoteInput(queue, &evt.Input)
@@ -510,11 +503,11 @@ func (p *Peer) OnUdpProtocolPeerEvent(evt *protocol.UdpProtocolEvent, queue int)
 
 // Every Idle, every endpoint and spectator goes through its event queue
 // handles each event and pops it from the queue.  Though most of the logic
-// for handling these events is the same (see: OnUdpProtocolEvent ), spectators
+// for handling these events is the same (see: OnProtocolEvent ), spectators
 // and peers handle certain events differently
-func (p *Peer) OnUdpProtocolSpectatorEvent(evt *protocol.UdpProtocolEvent, queue int) {
+func (p *Peer) OnProtocolSpectatorEvent(evt *protocol.ProtocolEvent, queue int) {
 	handle := p.QueueToSpectatorHandle(queue)
-	p.OnUdpProtocolEvent(evt, handle)
+	p.OnProtocolEvent(evt, handle)
 
 	var info Event
 	switch evt.Type() {
@@ -527,10 +520,10 @@ func (p *Peer) OnUdpProtocolSpectatorEvent(evt *protocol.UdpProtocolEvent, queue
 	}
 }
 
-// Logic for parsing UdpProtocol events and sending them up to the user via callbacks.
-// In P2P Backend, called by OnUdpProtocolSpectatorEvent and OnUdpProtocolPeerEvent,
-// which themselves are called by PollUdpProtocolEvents, which happens every Idle
-func (p *Peer) OnUdpProtocolEvent(evt *protocol.UdpProtocolEvent, handle PlayerHandle) {
+// Logic for parsing Protocol events and sending them up to the user via callbacks.
+// In P2P Backend, called by OnProtocolSpectatorEvent and OnProtocolPeerEvent,
+// which themselves are called by PollProtocolEvents, which happens every Idle
+func (p *Peer) OnProtocolEvent(evt *protocol.ProtocolEvent, handle PlayerHandle) {
 	var info Event
 
 	switch evt.Type() {
@@ -571,7 +564,7 @@ func (p *Peer) OnUdpProtocolEvent(evt *protocol.UdpProtocolEvent, handle PlayerH
   - decisions to disconnect are a result of us parsing the peer_connect_settings
   - blob in every endpoint periodically.
   - - pond3r
-    This is the function that's called when the UdpProtocol endpoint recogniizes
+    This is the function that's called when the Protocol endpoint recogniizes
     a disconnect (that lastRecvTime + disconnectTimeout < now) and sends that event
     up to the backend.
     Also maps to API function
@@ -644,9 +637,9 @@ func (p *Peer) DisconnectPlayerQueue(queue int, syncto int) {
 }
 
 /*
-Gets network stats for that specific play from their UdpProtocol Endpoint
+Gets network stats for that specific play from their Protocol Endpoint
 Includes ping, sendQueLen, kbpsSent, remoteFramesBehind and remoteFrameAdvantage
-All coming from the UdpProtocol Endpoint
+All coming from the Protocol Endpoint
 Maps to top level API function.
 */
 func (p *Peer) GetNetworkStats(player PlayerHandle) (protocol.NetworkStats, error) {
@@ -663,7 +656,7 @@ func (p *Peer) GetNetworkStats(player PlayerHandle) (protocol.NetworkStats, erro
 /*
 Sets frame delay for that specific player's input queue in Sync.
 Frame delay is used in the input queue, when remote inputs are recieved from
-the UdpProtocol and sent to Sync, sync then adds those inputs to the input queue
+the Protocol and sent to Sync, sync then adds those inputs to the input queue
 for that specific player, and sort of artificially corrects the frame that player
 should be on by increasing it frameDelay amount
 Maps to top level API function
@@ -690,7 +683,7 @@ func (p *Peer) SetFrameDelay(player PlayerHandle, delay int) error {
 		Propagates the disconnect timeout to all of the endpoints.
 	    lastRecvTime + disconnectTimeout < now means the endpoint has stopped
 		recieving packets and we are now disconnecting, effectively timing out.
-		The Udp endpoint propogates the Disconnect Event up to the backend.
+		The endpoint propogates the Disconnect Event up to the backend.
 		Which, in the P2P Backend, Disconnects the Player from the backend,
 		then sends the event upward.
 		Mapped to top level API function
@@ -708,7 +701,7 @@ func (p *Peer) SetDisconnectTimeout(timeout int) error {
 /*
 Propagates the disconnect notify start to all of the endpoints
 lastRecTime + disconnectNotifyStart < now  means the endpoint has
-stopped recieving packets. The udp endpoint starts sending a NetworkInterrupted event
+stopped recieving packets. The endpoint starts sending a NetworkInterrupted event
 up to the backend, check sends it up to the user via the API's callbacks.
 Mapped to top level Api function
 */
@@ -751,15 +744,15 @@ Propogates messages to all endpoints and spectators (?)
 As of right now it hands the message off to the first endpoint that
 handles it then returns?
 */
-func (p *Peer) HandleMessage(ipAddress string, port int, msg messages.UDPMessage, length int) {
+func (p *Peer) HandleMessage(player PlayerHandle, msg transport.Message, length int) {
 	for i := 0; i < p.numPlayers; i++ {
-		if p.endpoints[i].HandlesMsg(ipAddress, port) {
+		if p.endpoints[i].HandlesMsg(player) {
 			p.endpoints[i].OnMsg(msg, length)
 			return
 		}
 	}
 	for i := 0; i < p.numSpectators; i++ {
-		if p.spectators[i].HandlesMsg(ipAddress, port) {
+		if p.spectators[i].HandlesMsg(player) {
 			p.spectators[i].OnMsg(msg, length)
 			return
 		}
@@ -771,7 +764,7 @@ func (p *Peer) HandleMessages() {
 		select {
 		case mi, ok := <-p.messageChannel:
 			if ok {
-				p.HandleMessage(mi.Peer.Ip, mi.Peer.Port, mi.Message, mi.Length)
+				p.HandleMessage(mi.Player, mi.Message, mi.Length)
 			} else {
 				// The channel was closed, exit the function
 				return
@@ -853,15 +846,11 @@ func (p *Peer) CheckDesync() {
 	}
 }
 
-func (p *Peer) InitializeConnection(t ...transport.Connection) error {
-	if len(t) == 0 {
-		p.connection = transport.NewUdp(p, p.localPort)
-		return nil
-	}
-	p.connection = t[0]
+func (p *Peer) InitializeTransport(t transport.Transport) error {
+	p.transport = t
 	return nil
 }
 
 func (p *Peer) Start() {
-	go p.connection.Read(p.messageChannel)
+	go p.transport.Read(p.messageChannel)
 }

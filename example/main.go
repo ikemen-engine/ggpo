@@ -1,23 +1,28 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
-	//	"net/http"
-	// _ "net/http/pprof"
-
-	"github.com/ikemen-engine/ggpo"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/ikemen-engine/ggpo"
+	"github.com/ikemen-engine/ggpo/example/game"
+	"github.com/ikemen-engine/ggpo/transport/udp"
 )
 
 type peerAddress struct {
 	ip   string
 	port int
+}
+
+// remotePeer is a player handle together with the UDP address to register it
+// under.
+type remotePeer struct {
+	handle ggpo.PlayerHandle
+	ip     string
+	port   int
 }
 
 func getPeerAddress(address string) peerAddress {
@@ -36,66 +41,44 @@ func getPeerAddress(address string) peerAddress {
 }
 
 func main() {
-
-	// go func() {
-	// 	log.Println(http.ListenAndServe("localhost:6060", nil))
-	// }()
-
 	argsWithoutProg := os.Args[1:]
 	if len(argsWithoutProg) < 4 {
 		panic("Must enter <port> <num players> ('local' |IP adress) ('local' |IP adress) currentPlayer or <port> <num players> spectate <host ip>:<host port>")
 	}
-	var localPort, numPlayers int
-	var err error
-	localPort, err = strconv.Atoi(argsWithoutProg[0])
+	localPort, err := strconv.Atoi(argsWithoutProg[0])
 	if err != nil {
 		panic("Plase enter integer port")
 	}
 
-	numPlayers, err = strconv.Atoi(argsWithoutProg[1])
+	numPlayers, err := strconv.Atoi(argsWithoutProg[1])
 	if err != nil {
 		panic("Please enter integer numPlayers")
 	}
 
-	// logFileName := ""
-	// if len(argsWithoutProg) > 4 {
-	// 	logFileName = "Player" + argsWithoutProg[4] + ".log"
-	// } else {
-	// 	logFileName = "Spectator.log"
-	// }
-
-	// f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_RDWR, 0666)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// // don't forget to close it
-	// defer f.Close()
-	// logger := log.New(f, "Logger:", log.Ldate|log.Ltime|log.Lshortfile)
-	// ggpo.EnableLogs()
-	// ggpo.SetLogger(logger)
-
-	var game *Game
+	var g *game.Game
 	if argsWithoutProg[2] == "spectate" {
-		hostIp := argsWithoutProg[3]
-		hostAddress := getPeerAddress(hostIp)
-		game = GameInitSpectator(localPort, numPlayers, hostAddress.ip, hostAddress.port)
+		hostAddress := getPeerAddress(argsWithoutProg[3])
+		g = udpInitSpectator(localPort, numPlayers, hostAddress)
 	} else {
 		ipAddress := []string{argsWithoutProg[2], argsWithoutProg[3]}
 
-		currentPlayer, err = strconv.Atoi(argsWithoutProg[4])
+		currentPlayer, err := strconv.Atoi(argsWithoutProg[4])
 		if err != nil {
 			panic("Please enter integer currentPlayer")
 		}
 
 		players := make([]ggpo.Player, ggpo.MaxPlayers+ggpo.MaxSpectators)
+		var remotePeers []remotePeer
 		var i int
 		for i = 0; i < numPlayers; i++ {
+			// the handle for each remote player is simply their player number
+			handle := ggpo.PlayerHandle(i + 1)
 			if ipAddress[i] == "local" {
 				players[i] = ggpo.NewLocalPlayer(20, i+1)
 			} else {
 				remoteAddress := getPeerAddress(ipAddress[i])
-				players[i] = ggpo.NewRemotePlayer(20, i+1, remoteAddress.ip, remoteAddress.port)
+				players[i] = ggpo.NewRemotePlayer(20, i+1, handle)
+				remotePeers = append(remotePeers, remotePeer{handle: handle, ip: remoteAddress.ip, port: remoteAddress.port})
 			}
 		}
 
@@ -103,20 +86,68 @@ func main() {
 		numSpectators := 0
 		for offset < len(argsWithoutProg) {
 			remoteAddress := getPeerAddress(argsWithoutProg[offset])
-			players[i] = ggpo.NewSpectatorPlayer(20, remoteAddress.ip, remoteAddress.port)
+			// spectator handles start at 1000 to stay clear of player numbers
+			handle := ggpo.PlayerHandle(1000 + numSpectators)
+			players[i] = ggpo.NewSpectatorPlayer(20, handle)
+			remotePeers = append(remotePeers, remotePeer{handle: handle, ip: remoteAddress.ip, port: remoteAddress.port})
 			numSpectators++
 			i++
 			offset++
 		}
-		game = GameInit(localPort, numPlayers, players, numSpectators)
+		game.SetCurrentPlayer(currentPlayer)
+		g = udpInit(localPort, numPlayers, players, numSpectators, remotePeers)
 	}
 
-	flag.Parse()
-	start = time.Now().UnixMilli()
-	next = start
-	now = start
-	if err := ebiten.RunGame(game); err != nil {
+	game.StartClock()
+	if err := ebiten.RunGame(g); err != nil {
 		log.Fatal(err)
 	}
+}
 
+func udpInitSpectator(localPort int, numPlayers int, host peerAddress) *game.Game {
+	session := game.NewGameSession()
+
+	hostHandle := ggpo.PlayerHandle(1)
+	spectator := ggpo.NewSpectator(&session, numPlayers, game.InputSize(), hostHandle)
+	game.SetBackend(&spectator)
+	session.SetBackend(&spectator)
+
+	tr := udp.NewUdp(localPort)
+	tr.AddPeer(hostHandle, host.ip, host.port)
+	spectator.InitializeTransport(tr)
+	spectator.Start()
+
+	return session.Game()
+}
+
+func udpInit(localPort int, numPlayers int, players []ggpo.Player, numSpectators int, remotePeers []remotePeer) *game.Game {
+	session := game.NewGameSession()
+
+	peer := ggpo.NewPeer(&session, numPlayers, game.InputSize())
+	game.SetBackend(&peer)
+	session.SetBackend(&peer)
+
+	tr := udp.NewUdp(localPort)
+	for _, rp := range remotePeers {
+		tr.AddPeer(rp.handle, rp.ip, rp.port)
+	}
+	peer.InitializeTransport(tr)
+
+	var localHandle ggpo.PlayerHandle
+	for i := 0; i < numPlayers+numSpectators; i++ {
+		var handle ggpo.PlayerHandle
+		if err := peer.AddPlayer(&players[i], &handle); err != nil {
+			log.Fatalf("There's an issue from AddPlayer")
+		}
+		if players[i].PlayerType == ggpo.PlayerTypeLocal {
+			game.SetCurrentPlayer(int(handle))
+			localHandle = handle
+		}
+	}
+	peer.SetDisconnectTimeout(3000)
+	peer.SetDisconnectNotifyStart(1000)
+	peer.SetFrameDelay(localHandle, game.FrameDelay)
+
+	peer.Start()
+	return session.Game()
 }

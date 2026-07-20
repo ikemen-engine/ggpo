@@ -6,48 +6,45 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ikemen-engine/ggpo"
 	"github.com/ikemen-engine/ggpo/internal/mocks"
 	"github.com/ikemen-engine/ggpo/internal/protocol"
 	"github.com/ikemen-engine/ggpo/transport"
-
-	"github.com/ikemen-engine/ggpo"
 )
 
 func TestNewSpectatorBackendSession(t *testing.T) {
 	session := mocks.NewFakeSession()
-	localPort := 6000
-	remotePort := 6001
-	remoteIp := "127.2.1.1"
+	localHandle := ggpo.PlayerHandle(6000)
+	remoteHandle := ggpo.PlayerHandle(6001)
 	numPlayers := 2
 	inputSize := 4
-	p2p := ggpo.NewPeer(&session, localPort, numPlayers, inputSize)
+	p2p := ggpo.NewPeer(&session, numPlayers, inputSize)
 
 	session2 := mocks.NewFakeSession()
-	p2p2 := ggpo.NewPeer(&session2, remotePort, numPlayers, inputSize)
+	p2p2 := ggpo.NewPeer(&session2, numPlayers, inputSize)
 
-	hostIp := "127.2.1.1"
-	specPort := 6005
-	stb := ggpo.NewSpectator(&session, specPort, 2, 4, hostIp, localPort)
+	specRemoteHandle := ggpo.PlayerHandle(6005)
+	stb := ggpo.NewSpectator(&session, 2, 4, localHandle)
 
-	connection := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p2, &stb}, localPort, remoteIp)
-	connection2 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, remotePort, remoteIp)
-	connection3 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, specPort, remoteIp)
+	connection := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p2, &stb}, localHandle)
+	connection2 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, remoteHandle)
+	connection3 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, specRemoteHandle)
 
-	p2p.InitializeConnection(&connection)
-	p2p2.InitializeConnection(&connection2)
-	stb.InitializeConnection(&connection3)
+	p2p.InitializeTransport(&connection)
+	p2p2.InitializeTransport(&connection2)
+	stb.InitializeTransport(&connection3)
 
 	player1 := ggpo.NewLocalPlayer(20, 1)
 	var p1Handle ggpo.PlayerHandle
-	player2 := ggpo.NewRemotePlayer(20, 2, remoteIp, remotePort)
+	player2 := ggpo.NewRemotePlayer(20, 2, remoteHandle)
 	var p2Handle ggpo.PlayerHandle
-	spectator := ggpo.NewSpectatorPlayer(20, remoteIp, specPort)
+	spectator := ggpo.NewSpectatorPlayer(20, specRemoteHandle)
 	var specHandle ggpo.PlayerHandle
 	p2p.AddPlayer(&player1, &p1Handle)
 	p2p.AddPlayer(&player2, &p2Handle)
 	p2p.AddPlayer(&spectator, &specHandle)
 
-	player1 = ggpo.NewRemotePlayer(20, 1, remoteIp, localPort)
+	player1 = ggpo.NewRemotePlayer(20, 1, localHandle)
 	player2 = ggpo.NewLocalPlayer(20, 2)
 	var p2handle1 ggpo.PlayerHandle
 	var p2handle2 ggpo.PlayerHandle
@@ -82,39 +79,37 @@ func TestNewSpectatorBackendSession(t *testing.T) {
 }
 func TestNewSpectatorBackendInput(t *testing.T) {
 	session := mocks.NewFakeSession()
-	localPort := 6000
-	remotePort := 6001
-	remoteIp := "127.2.1.1"
+	localHandle := ggpo.PlayerHandle(6000)
+	remoteHandle := ggpo.PlayerHandle(6001)
 	numPlayers := 2
 	inputSize := 4
-	p2p := ggpo.NewPeer(&session, localPort, numPlayers, inputSize)
+	p2p := ggpo.NewPeer(&session, numPlayers, inputSize)
 
 	session2 := mocks.NewFakeSession()
-	p2p2 := ggpo.NewPeer(&session2, remotePort, numPlayers, inputSize)
+	p2p2 := ggpo.NewPeer(&session2, numPlayers, inputSize)
 
-	hostIp := "127.2.1.1"
-	specPort := 6005
-	stb := ggpo.NewSpectator(&session, specPort, 2, 4, hostIp, localPort)
+	specRemoteHandle := ggpo.PlayerHandle(6005)
+	stb := ggpo.NewSpectator(&session, 2, 4, localHandle)
 
-	connection := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p2, &stb}, localPort, remoteIp)
-	connection2 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, remotePort, remoteIp)
-	connection3 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, specPort, remoteIp)
+	connection := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p2, &stb}, localHandle)
+	connection2 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, remoteHandle)
+	connection3 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, specRemoteHandle)
 
-	p2p.InitializeConnection(&connection)
-	p2p2.InitializeConnection(&connection2)
-	stb.InitializeConnection(&connection3)
+	p2p.InitializeTransport(&connection)
+	p2p2.InitializeTransport(&connection2)
+	stb.InitializeTransport(&connection3)
 
 	player1 := ggpo.NewLocalPlayer(20, 1)
 	var p1Handle ggpo.PlayerHandle
-	player2 := ggpo.NewRemotePlayer(20, 2, remoteIp, remotePort)
+	player2 := ggpo.NewRemotePlayer(20, 2, remoteHandle)
 	var p2Handle ggpo.PlayerHandle
-	spectator := ggpo.NewSpectatorPlayer(20, remoteIp, specPort)
+	spectator := ggpo.NewSpectatorPlayer(20, specRemoteHandle)
 	var specHandle ggpo.PlayerHandle
 	p2p.AddPlayer(&player1, &p1Handle)
 	p2p.AddPlayer(&player2, &p2Handle)
 	p2p.AddPlayer(&spectator, &specHandle)
 
-	player1 = ggpo.NewRemotePlayer(20, 1, remoteIp, localPort)
+	player1 = ggpo.NewRemotePlayer(20, 1, localHandle)
 	player2 = ggpo.NewLocalPlayer(20, 2)
 	var p2handle1 ggpo.PlayerHandle
 	var p2handle2 ggpo.PlayerHandle
@@ -171,47 +166,45 @@ func TestNewSpectatorBackendBehind(t *testing.T) {
 	var p2p ggpo.Peer
 	session := mocks.NewFakeSessionWithBackend()
 	session.SetBackend(&p2p)
-	localPort := 6000
-	remotePort := 6001
-	remoteIp := "127.2.1.1"
+	localHandle := ggpo.PlayerHandle(6000)
+	remoteHandle := ggpo.PlayerHandle(6001)
 	numPlayers := 2
 	inputSize := 4
-	p2p = ggpo.NewPeer(&session, localPort, numPlayers, inputSize)
+	p2p = ggpo.NewPeer(&session, numPlayers, inputSize)
 
 	var p2p2 ggpo.Peer
 	session2 := mocks.NewFakeSessionWithBackend()
 	session2.SetBackend(&p2p2)
 
-	p2p2 = ggpo.NewPeer(&session2, remotePort, numPlayers, inputSize)
+	p2p2 = ggpo.NewPeer(&session2, numPlayers, inputSize)
 
 	var stb ggpo.Spectator
 
 	session3 := mocks.NewFakeSessionWithBackend()
 	session3.SetBackend(&stb)
 
-	hostIp := "127.2.1.1"
-	specPort := 6005
-	stb = ggpo.NewSpectator(&session3, specPort, 2, 4, hostIp, localPort)
+	specRemoteHandle := ggpo.PlayerHandle(6005)
+	stb = ggpo.NewSpectator(&session3, 2, 4, localHandle)
 
-	connection := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p2, &stb}, localPort, remoteIp)
-	connection2 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, remotePort, remoteIp)
-	connection3 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, specPort, remoteIp)
+	connection := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p2, &stb}, localHandle)
+	connection2 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, remoteHandle)
+	connection3 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, specRemoteHandle)
 
-	p2p.InitializeConnection(&connection)
-	p2p2.InitializeConnection(&connection2)
-	stb.InitializeConnection(&connection3)
+	p2p.InitializeTransport(&connection)
+	p2p2.InitializeTransport(&connection2)
+	stb.InitializeTransport(&connection3)
 
 	player1 := ggpo.NewLocalPlayer(20, 1)
 	var p1Handle ggpo.PlayerHandle
-	player2 := ggpo.NewRemotePlayer(20, 2, remoteIp, remotePort)
+	player2 := ggpo.NewRemotePlayer(20, 2, remoteHandle)
 	var p2Handle ggpo.PlayerHandle
-	spectator := ggpo.NewSpectatorPlayer(20, remoteIp, specPort)
+	spectator := ggpo.NewSpectatorPlayer(20, specRemoteHandle)
 	var specHandle ggpo.PlayerHandle
 	p2p.AddPlayer(&player1, &p1Handle)
 	p2p.AddPlayer(&player2, &p2Handle)
 	p2p.AddPlayer(&spectator, &specHandle)
 
-	player1 = ggpo.NewRemotePlayer(20, 1, remoteIp, localPort)
+	player1 = ggpo.NewRemotePlayer(20, 1, localHandle)
 	player2 = ggpo.NewLocalPlayer(20, 2)
 	var p2handle1 ggpo.PlayerHandle
 	var p2handle2 ggpo.PlayerHandle
@@ -260,39 +253,37 @@ func TestNewSpectatorBackendBehind(t *testing.T) {
 
 func TestNewSpectatorBackendCharacterization(t *testing.T) {
 	session := mocks.NewFakeSession()
-	localPort := 6000
-	remotePort := 6001
-	remoteIp := "127.2.1.1"
+	localHandle := ggpo.PlayerHandle(6000)
+	remoteHandle := ggpo.PlayerHandle(6001)
 	numPlayers := 2
 	inputSize := 4
-	p2p := ggpo.NewPeer(&session, localPort, numPlayers, inputSize)
+	p2p := ggpo.NewPeer(&session, numPlayers, inputSize)
 
 	session2 := mocks.NewFakeSession()
-	p2p2 := ggpo.NewPeer(&session2, remotePort, numPlayers, inputSize)
+	p2p2 := ggpo.NewPeer(&session2, numPlayers, inputSize)
 
-	hostIp := "127.2.1.1"
-	specPort := 6005
-	stb := ggpo.NewSpectator(&session, specPort, 2, 4, hostIp, localPort)
+	specRemoteHandle := ggpo.PlayerHandle(6005)
+	stb := ggpo.NewSpectator(&session, 2, 4, localHandle)
 
-	connection := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p2, &stb}, localPort, remoteIp)
-	connection2 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, remotePort, remoteIp)
-	connection3 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, specPort, remoteIp)
+	connection := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p2, &stb}, localHandle)
+	connection2 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, remoteHandle)
+	connection3 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, specRemoteHandle)
 
-	p2p.InitializeConnection(&connection)
-	p2p2.InitializeConnection(&connection2)
-	stb.InitializeConnection(&connection3)
+	p2p.InitializeTransport(&connection)
+	p2p2.InitializeTransport(&connection2)
+	stb.InitializeTransport(&connection3)
 
 	player1 := ggpo.NewLocalPlayer(20, 1)
 	var p1Handle ggpo.PlayerHandle
-	player2 := ggpo.NewRemotePlayer(20, 2, remoteIp, remotePort)
+	player2 := ggpo.NewRemotePlayer(20, 2, remoteHandle)
 	var p2Handle ggpo.PlayerHandle
-	spectator := ggpo.NewSpectatorPlayer(20, remoteIp, specPort)
+	spectator := ggpo.NewSpectatorPlayer(20, specRemoteHandle)
 	var specHandle ggpo.PlayerHandle
 	p2p.AddPlayer(&player1, &p1Handle)
 	p2p.AddPlayer(&player2, &p2Handle)
 	p2p.AddPlayer(&spectator, &specHandle)
 
-	player1 = ggpo.NewRemotePlayer(20, 1, remoteIp, localPort)
+	player1 = ggpo.NewRemotePlayer(20, 1, localHandle)
 	player2 = ggpo.NewLocalPlayer(20, 2)
 	var p2handle1 ggpo.PlayerHandle
 	var p2handle2 ggpo.PlayerHandle
@@ -350,39 +341,37 @@ func TestNewSpectatorBackendCharacterization(t *testing.T) {
 
 func TestNewSpectatorBackendNoInputYet(t *testing.T) {
 	session := mocks.NewFakeSession()
-	localPort := 6000
-	remotePort := 6001
-	remoteIp := "127.2.1.1"
+	localHandle := ggpo.PlayerHandle(6000)
+	remoteHandle := ggpo.PlayerHandle(6001)
 	numPlayers := 2
 	inputSize := 4
-	p2p := ggpo.NewPeer(&session, localPort, numPlayers, inputSize)
+	p2p := ggpo.NewPeer(&session, numPlayers, inputSize)
 
 	session2 := mocks.NewFakeSession()
-	p2p2 := ggpo.NewPeer(&session2, remotePort, numPlayers, inputSize)
+	p2p2 := ggpo.NewPeer(&session2, numPlayers, inputSize)
 
-	hostIp := "127.2.1.1"
-	specPort := 6005
-	stb := ggpo.NewSpectator(&session, specPort, 2, 4, hostIp, localPort)
+	specRemoteHandle := ggpo.PlayerHandle(6005)
+	stb := ggpo.NewSpectator(&session, 2, 4, localHandle)
 
-	connection := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p2, &stb}, localPort, remoteIp)
-	connection2 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, remotePort, remoteIp)
-	connection3 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, specPort, remoteIp)
+	connection := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p2, &stb}, localHandle)
+	connection2 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, remoteHandle)
+	connection3 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, specRemoteHandle)
 
-	p2p.InitializeConnection(&connection)
-	p2p2.InitializeConnection(&connection2)
-	stb.InitializeConnection(&connection3)
+	p2p.InitializeTransport(&connection)
+	p2p2.InitializeTransport(&connection2)
+	stb.InitializeTransport(&connection3)
 
 	player1 := ggpo.NewLocalPlayer(20, 1)
 	var p1Handle ggpo.PlayerHandle
-	player2 := ggpo.NewRemotePlayer(20, 2, remoteIp, remotePort)
+	player2 := ggpo.NewRemotePlayer(20, 2, remoteHandle)
 	var p2Handle ggpo.PlayerHandle
-	spectator := ggpo.NewSpectatorPlayer(20, remoteIp, specPort)
+	spectator := ggpo.NewSpectatorPlayer(20, specRemoteHandle)
 	var specHandle ggpo.PlayerHandle
 	p2p.AddPlayer(&player1, &p1Handle)
 	p2p.AddPlayer(&player2, &p2Handle)
 	p2p.AddPlayer(&spectator, &specHandle)
 
-	player1 = ggpo.NewRemotePlayer(20, 1, remoteIp, localPort)
+	player1 = ggpo.NewRemotePlayer(20, 1, localHandle)
 	player2 = ggpo.NewLocalPlayer(20, 2)
 	var p2handle1 ggpo.PlayerHandle
 	var p2handle2 ggpo.PlayerHandle
@@ -412,39 +401,37 @@ func TestNewSpectatorBackendNoInputYet(t *testing.T) {
 /* WIP, need to be able to test that the spectator is disconnected */
 func TestNewSpectatorBackendDisconnect(t *testing.T) {
 	session := mocks.NewFakeSession()
-	localPort := 6000
-	remotePort := 6001
-	remoteIp := "127.2.1.1"
+	localHandle := ggpo.PlayerHandle(6000)
+	remoteHandle := ggpo.PlayerHandle(6001)
 	numPlayers := 2
 	inputSize := 4
-	p2p := ggpo.NewPeer(&session, localPort, numPlayers, inputSize)
+	p2p := ggpo.NewPeer(&session, numPlayers, inputSize)
 
 	session2 := mocks.NewFakeSession()
-	p2p2 := ggpo.NewPeer(&session2, remotePort, numPlayers, inputSize)
+	p2p2 := ggpo.NewPeer(&session2, numPlayers, inputSize)
 
-	hostIp := "127.2.1.1"
-	specPort := 6005
-	stb := ggpo.NewSpectator(&session, specPort, 2, 4, hostIp, localPort)
+	specRemoteHandle := ggpo.PlayerHandle(6005)
+	stb := ggpo.NewSpectator(&session, 2, 4, localHandle)
 
-	connection := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p2, &stb}, localPort, remoteIp)
-	connection2 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, remotePort, remoteIp)
-	connection3 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, specPort, remoteIp)
+	connection := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p2, &stb}, localHandle)
+	connection2 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, remoteHandle)
+	connection3 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, specRemoteHandle)
 
-	p2p.InitializeConnection(&connection)
-	p2p2.InitializeConnection(&connection2)
-	stb.InitializeConnection(&connection3)
+	p2p.InitializeTransport(&connection)
+	p2p2.InitializeTransport(&connection2)
+	stb.InitializeTransport(&connection3)
 
 	player1 := ggpo.NewLocalPlayer(20, 1)
 	var p1Handle ggpo.PlayerHandle
-	player2 := ggpo.NewRemotePlayer(20, 2, remoteIp, remotePort)
+	player2 := ggpo.NewRemotePlayer(20, 2, remoteHandle)
 	var p2Handle ggpo.PlayerHandle
-	spectator := ggpo.NewSpectatorPlayer(20, remoteIp, specPort)
+	spectator := ggpo.NewSpectatorPlayer(20, specRemoteHandle)
 	var specHandle ggpo.PlayerHandle
 	p2p.AddPlayer(&player1, &p1Handle)
 	p2p.AddPlayer(&player2, &p2Handle)
 	p2p.AddPlayer(&spectator, &specHandle)
 
-	player1 = ggpo.NewRemotePlayer(20, 1, remoteIp, localPort)
+	player1 = ggpo.NewRemotePlayer(20, 1, localHandle)
 	player2 = ggpo.NewLocalPlayer(20, 2)
 	var p2handle1 ggpo.PlayerHandle
 	var p2handle2 ggpo.PlayerHandle
@@ -516,38 +503,36 @@ func TestNewSpectatorBackendDisconnect(t *testing.T) {
 
 func TestNoAddingSpectatorAfterSynchronization(t *testing.T) {
 	session := mocks.NewFakeSession()
-	localPort := 6000
-	remotePort := 6001
-	remoteIp := "127.2.1.1"
+	localHandle := ggpo.PlayerHandle(6000)
+	remoteHandle := ggpo.PlayerHandle(6001)
 	numPlayers := 2
 	inputSize := 4
-	p2p := ggpo.NewPeer(&session, localPort, numPlayers, inputSize)
+	p2p := ggpo.NewPeer(&session, numPlayers, inputSize)
 
 	session2 := mocks.NewFakeSession()
-	p2p2 := ggpo.NewPeer(&session2, remotePort, numPlayers, inputSize)
+	p2p2 := ggpo.NewPeer(&session2, numPlayers, inputSize)
 
-	hostIp := "127.2.1.1"
-	specPort := 6005
-	stb := ggpo.NewSpectator(&session, specPort, 2, 4, hostIp, localPort)
+	specRemoteHandle := ggpo.PlayerHandle(6005)
+	stb := ggpo.NewSpectator(&session, 2, 4, localHandle)
 
-	connection := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p2, &stb}, localPort, remoteIp)
-	connection2 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, remotePort, remoteIp)
-	connection3 := mocks.NewFakeMultiplePeerConnection([]transport.MessageHandler{&p2p}, specPort, remoteIp)
+	connection := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p2, &stb}, localHandle)
+	connection2 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, remoteHandle)
+	connection3 := mocks.NewFakeMultiplePeerTransport([]transport.MessageHandler{&p2p}, specRemoteHandle)
 
-	p2p.InitializeConnection(&connection)
-	p2p2.InitializeConnection(&connection2)
-	stb.InitializeConnection(&connection3)
+	p2p.InitializeTransport(&connection)
+	p2p2.InitializeTransport(&connection2)
+	stb.InitializeTransport(&connection3)
 
 	player1 := ggpo.NewLocalPlayer(20, 1)
 	var p1Handle ggpo.PlayerHandle
-	player2 := ggpo.NewRemotePlayer(20, 2, remoteIp, remotePort)
+	player2 := ggpo.NewRemotePlayer(20, 2, remoteHandle)
 	var p2Handle ggpo.PlayerHandle
-	spectator := ggpo.NewSpectatorPlayer(20, remoteIp, specPort)
+	spectator := ggpo.NewSpectatorPlayer(20, specRemoteHandle)
 	var specHandle ggpo.PlayerHandle
 	p2p.AddPlayer(&player1, &p1Handle)
 	p2p.AddPlayer(&player2, &p2Handle)
 
-	player1 = ggpo.NewRemotePlayer(20, 1, remoteIp, localPort)
+	player1 = ggpo.NewRemotePlayer(20, 1, localHandle)
 	player2 = ggpo.NewLocalPlayer(20, 2)
 	var p2handle1 ggpo.PlayerHandle
 	var p2handle2 ggpo.PlayerHandle
@@ -572,10 +557,8 @@ func TestNoAddingSpectatorAfterSynchronization(t *testing.T) {
 
 func TestSpectatorBackendDissconnectPlayerError(t *testing.T) {
 	session := mocks.NewFakeSession()
-	hostIp := "127.2.1.1"
-	hostPort := 6001
-	localPort := 6000
-	stb := ggpo.NewSpectator(&session, localPort, 2, 4, hostIp, hostPort)
+	hostHandle := ggpo.PlayerHandle(6001)
+	stb := ggpo.NewSpectator(&session, 2, 4, hostHandle)
 	err := stb.DisconnectPlayer(ggpo.PlayerHandle(1))
 	if err == nil {
 		t.Errorf("The code did not error when using an unsupported Feature.")
@@ -584,10 +567,8 @@ func TestSpectatorBackendDissconnectPlayerError(t *testing.T) {
 
 func TestSpectatorBackendGetNetworkStatsError(t *testing.T) {
 	session := mocks.NewFakeSession()
-	hostIp := "127.2.1.1"
-	hostPort := 6001
-	localPort := 6000
-	stb := ggpo.NewSpectator(&session, localPort, 2, 4, hostIp, hostPort)
+	hostHandle := ggpo.PlayerHandle(6001)
+	stb := ggpo.NewSpectator(&session, 2, 4, hostHandle)
 	_, err := stb.GetNetworkStats(ggpo.PlayerHandle(1))
 	if err == nil {
 		t.Errorf("The code did not error when using an unsupported Feature.")
@@ -596,10 +577,8 @@ func TestSpectatorBackendGetNetworkStatsError(t *testing.T) {
 
 func TestSpectatorBackendSetFrameDelayError(t *testing.T) {
 	session := mocks.NewFakeSession()
-	hostIp := "127.2.1.1"
-	hostPort := 6001
-	localPort := 6000
-	stb := ggpo.NewSpectator(&session, localPort, 2, 4, hostIp, hostPort)
+	hostHandle := ggpo.PlayerHandle(6001)
+	stb := ggpo.NewSpectator(&session, 2, 4, hostHandle)
 	err := stb.SetFrameDelay(ggpo.PlayerHandle(1), 20)
 	if err == nil {
 		t.Errorf("The code did not error when using an unsupported Feature.")
@@ -608,10 +587,8 @@ func TestSpectatorBackendSetFrameDelayError(t *testing.T) {
 
 func TestSpectatorBackendSetDisconnectTimeoutError(t *testing.T) {
 	session := mocks.NewFakeSession()
-	hostIp := "127.2.1.1"
-	hostPort := 6001
-	localPort := 6000
-	stb := ggpo.NewSpectator(&session, localPort, 2, 4, hostIp, hostPort)
+	hostHandle := ggpo.PlayerHandle(6001)
+	stb := ggpo.NewSpectator(&session, 2, 4, hostHandle)
 	err := stb.SetDisconnectTimeout(20)
 	if err == nil {
 		t.Errorf("The code did not error when using an unsupported Feature.")
@@ -619,10 +596,8 @@ func TestSpectatorBackendSetDisconnectTimeoutError(t *testing.T) {
 }
 func TestSpectatorBackendSetDisconnectNotifyStartError(t *testing.T) {
 	session := mocks.NewFakeSession()
-	hostIp := "127.2.1.1"
-	hostPort := 6001
-	localPort := 6000
-	stb := ggpo.NewSpectator(&session, localPort, 2, 4, hostIp, hostPort)
+	hostHandle := ggpo.PlayerHandle(6001)
+	stb := ggpo.NewSpectator(&session, 2, 4, hostHandle)
 	err := stb.SetDisconnectNotifyStart(20)
 	if err == nil {
 		t.Errorf("The code did not error when using an unsupported Feature.")
@@ -631,10 +606,8 @@ func TestSpectatorBackendSetDisconnectNotifyStartError(t *testing.T) {
 
 func TestSpectatorBackendCloseError(t *testing.T) {
 	session := mocks.NewFakeSession()
-	hostIp := "127.2.1.1"
-	hostPort := 6001
-	localPort := 6000
-	stb := ggpo.NewSpectator(&session, localPort, 2, 4, hostIp, hostPort)
+	hostHandle := ggpo.PlayerHandle(6001)
+	stb := ggpo.NewSpectator(&session, 2, 4, hostHandle)
 	err := stb.Close()
 	if err == nil {
 		t.Errorf("The code did not error when using an unsupported Feature.")
@@ -642,10 +615,8 @@ func TestSpectatorBackendCloseError(t *testing.T) {
 }
 func TestSpectatorBackendAddPlayerError(t *testing.T) {
 	session := mocks.NewFakeSession()
-	hostIp := "127.2.1.1"
-	hostPort := 6001
-	localPort := 6000
-	stb := ggpo.NewSpectator(&session, localPort, 2, 4, hostIp, hostPort)
+	hostHandle := ggpo.PlayerHandle(6001)
+	stb := ggpo.NewSpectator(&session, 2, 4, hostHandle)
 	var player ggpo.Player
 	var playerHandle ggpo.PlayerHandle
 	err := stb.AddPlayer(&player, &playerHandle)

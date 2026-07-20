@@ -2,7 +2,6 @@ package ggpo
 
 import (
 	"github.com/ikemen-engine/ggpo/internal/input"
-	"github.com/ikemen-engine/ggpo/internal/messages"
 	"github.com/ikemen-engine/ggpo/internal/polling"
 	"github.com/ikemen-engine/ggpo/internal/protocol"
 	"github.com/ikemen-engine/ggpo/internal/util"
@@ -16,22 +15,23 @@ const DefaultCatchupSpeed int = 1
 type Spectator struct {
 	session         Session
 	poll            polling.Poller
-	connection      transport.Connection
-	host            protocol.UdpProtocol
+	transport       transport.Transport
+	host            protocol.Protocol
 	synchonizing    bool
 	inputSize       int
 	numPlayers      int
 	nextInputToSend int
 	inputs          []input.GameInput
-	hostIp          string
-	hostPort        int
+	hostHandle      PlayerHandle
 	framesBehind    int
-	localPort       int
 	currentFrame    int
 	messageChannel  chan transport.MessageChannelItem
 }
 
-func NewSpectator(cb Session, localPort int, numPlayers int, inputSize int, hostIp string, hostPort int) Spectator {
+// NewSpectator creates a spectator session that watches the host identified by
+// hostHandle, the player handle the host is registered under in the transport
+// passed to InitializeTransport.
+func NewSpectator(cb Session, numPlayers int, inputSize int, hostHandle PlayerHandle) Spectator {
 	s := Spectator{}
 	s.numPlayers = numPlayers
 	s.inputSize = inputSize
@@ -45,15 +45,10 @@ func NewSpectator(cb Session, localPort int, numPlayers int, inputSize int, host
 		i.Frame = -1
 	}
 	s.inputs = inputs
-	//port := strconv.Itoa(hostPort)
-	//s.udp = NewUdp(&s, localPort)
-	s.hostIp = hostIp
-	s.hostPort = hostPort
-	s.localPort = localPort
+	s.hostHandle = hostHandle
 	var poll polling.Poll = polling.NewPoll()
 	s.poll = &poll
 	s.messageChannel = make(chan transport.MessageChannelItem, 200)
-	//go s.udp.Read()
 	return s
 }
 
@@ -64,7 +59,7 @@ func (s *Spectator) Idle(timeout int, timeFunc ...polling.FuncTimeType) error {
 	} else {
 		s.poll.Pump(timeFunc[0])
 	}
-	s.PollUdpProtocolEvents()
+	s.PollProtocolEvents()
 
 	if s.framesBehind > 0 {
 		for s.nextInputToSend < s.currentFrame {
@@ -119,23 +114,23 @@ func (s *Spectator) SyncInput(disconnectFlags *int) ([][]byte, error) {
 func (s *Spectator) AdvanceFrame(checksum uint32) error {
 	util.Log.Printf("End of frame (%d)...\n", s.nextInputToSend-1)
 	s.Idle(0)
-	s.PollUdpProtocolEvents()
+	s.PollProtocolEvents()
 
 	return nil
 }
 
-func (s *Spectator) PollUdpProtocolEvents() {
+func (s *Spectator) PollProtocolEvents() {
 	for {
 		evt, ok := s.host.GetEvent()
 		if ok != nil {
 			break
 		} else {
-			s.OnUdpProtocolEvent(evt)
+			s.OnProtocolEvent(evt)
 		}
 	}
 }
 
-func (s *Spectator) OnUdpProtocolEvent(evt *protocol.UdpProtocolEvent) {
+func (s *Spectator) OnProtocolEvent(evt *protocol.ProtocolEvent) {
 	var info Event
 	switch evt.Type() {
 	case protocol.ConnectedEvent:
@@ -186,8 +181,8 @@ func (s *Spectator) OnUdpProtocolEvent(evt *protocol.UdpProtocolEvent) {
 	}
 }
 
-func (s *Spectator) HandleMessage(ipAddress string, port int, msg messages.UDPMessage, len int) {
-	if s.host.HandlesMsg(ipAddress, port) {
+func (s *Spectator) HandleMessage(player PlayerHandle, msg transport.Message, len int) {
+	if s.host.HandlesMsg(player) {
 		s.host.OnMsg(msg, len)
 	}
 }
@@ -219,26 +214,22 @@ func (s *Spectator) SetDisconnectNotifyStart(timeout int) error {
 func (s *Spectator) Close() error {
 	return Error{Code: ErrorCodeInvalidRequest, Name: "ErrorCodeInvalidRequest"}
 }
-func (s *Spectator) InitializeConnection(c ...transport.Connection) error {
-	if len(c) == 0 {
-		s.connection = transport.NewUdp(s, s.localPort)
-		return nil
-	}
-	s.connection = c[0]
+func (s *Spectator) InitializeTransport(t transport.Transport) error {
+	s.transport = t
 	return nil
 }
 
 func (s *Spectator) HandleMessages() {
 	for i := 0; i < len(s.messageChannel); i++ {
 		mi := <-s.messageChannel
-		s.HandleMessage(mi.Peer.Ip, mi.Peer.Port, mi.Message, mi.Length)
+		s.HandleMessage(mi.Player, mi.Message, mi.Length)
 	}
 }
 
 func (s *Spectator) Start() {
-	go s.connection.Read(s.messageChannel)
+	go s.transport.Read(s.messageChannel)
 
-	s.host = protocol.NewUdpProtocol(s.connection, 0, s.hostIp, s.hostPort, nil)
+	s.host = protocol.NewProtocol(s.transport, 0, s.hostHandle, nil)
 	s.poll.RegisterLoop(&s.host, nil)
 	s.host.Synchronize()
 

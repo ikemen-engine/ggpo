@@ -22,5 +22,5 @@ type Backend interface {
 	SetDisconnectNotifyStart(timeout int) error
 	Close() error
 	Start()
-	InitializeConnection(c ...transport.Connection) error
+	InitializeTransport(t transport.Transport) error
 }

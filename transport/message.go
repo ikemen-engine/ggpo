@@ -1,4 +1,4 @@
-package messages
+package transport
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 
 const (
 	MaxCompressedBits = 4096
-	UDPMsgMaxPlayers  = 4
+	MsgMaxPlayers     = 4
 )
 
 const (
@@ -31,19 +31,19 @@ func init() {
 	gob.Register(&KeepAlivePacket{})
 }
 
-type UDPMessage interface {
-	Type() UDPMessageType
-	Header() UDPHeader
+type Message interface {
+	Type() MessageType
+	Header() Header
 	SetHeader(magicNumber uint16, sequenceNumber uint16)
 	PacketSize() int
 	ToBytes() []byte
 	FromBytes([]byte) error
 }
 
-type UDPMessageType int
+type MessageType int
 
 const (
-	InvalidMsg UDPMessageType = iota
+	InvalidMsg MessageType = iota
 	SyncRequestMsg
 	SyncReplyMsg
 	InputMsg
@@ -53,18 +53,18 @@ const (
 	InputAckMsg
 )
 
-type UdpConnectStatus struct {
+type ConnectStatus struct {
 	Disconnected bool
 	LastFrame    int32
 }
 
-func (u *UdpConnectStatus) Size() int {
+func (u *ConnectStatus) Size() int {
 	sum := int(unsafe.Sizeof(u.Disconnected))
 	sum += int(unsafe.Sizeof(u.LastFrame))
 	return sum
 }
 
-func (u *UdpConnectStatus) ToBytes() []byte {
+func (u *ConnectStatus) ToBytes() []byte {
 	buf := make([]byte, u.Size())
 	if u.Disconnected {
 		buf[0] = 1
@@ -74,7 +74,7 @@ func (u *UdpConnectStatus) ToBytes() []byte {
 	binary.BigEndian.PutUint32(buf[1:], uint32(u.LastFrame))
 	return buf
 }
-func (u *UdpConnectStatus) FromBytes(buffer []byte) {
+func (u *ConnectStatus) FromBytes(buffer []byte) {
 	if buffer[0] == 1 {
 		u.Disconnected = true
 	} else {
@@ -83,20 +83,20 @@ func (u *UdpConnectStatus) FromBytes(buffer []byte) {
 	u.LastFrame = int32(binary.BigEndian.Uint32(buffer[1:]))
 }
 
-type UDPHeader struct {
+type Header struct {
 	Magic          uint16
 	SequenceNumber uint16
 	HeaderType     uint8
 }
 
-func (u UDPHeader) Size() int {
+func (u Header) Size() int {
 	sum := int(unsafe.Sizeof(u.Magic))
 	sum += int(unsafe.Sizeof(u.SequenceNumber))
 	sum += int(unsafe.Sizeof(u.HeaderType))
 	return sum
 }
 
-func (u UDPHeader) ToBytes() []byte {
+func (u Header) ToBytes() []byte {
 	buf := make([]byte, 5)
 	binary.BigEndian.PutUint16(buf[:2], u.Magic)
 	binary.BigEndian.PutUint16(buf[2:4], u.SequenceNumber)
@@ -104,22 +104,22 @@ func (u UDPHeader) ToBytes() []byte {
 	return buf
 }
 
-func (u *UDPHeader) FromBytes(buffer []byte) {
+func (u *Header) FromBytes(buffer []byte) {
 	u.Magic = binary.BigEndian.Uint16(buffer[:2])
 	u.SequenceNumber = binary.BigEndian.Uint16(buffer[2:4])
 	u.HeaderType = buffer[4]
 }
 
 type SyncRequestPacket struct {
-	MessageHeader    UDPHeader
+	MessageHeader    Header
 	RandomRequest    uint32
 	RemoteMagic      uint16
 	RemoteEndpoint   uint8
 	RemoteInputDelay uint8
 }
 
-func (s *SyncRequestPacket) Type() UDPMessageType { return SyncRequestMsg }
-func (s *SyncRequestPacket) Header() UDPHeader    { return s.MessageHeader }
+func (s *SyncRequestPacket) Type() MessageType { return SyncRequestMsg }
+func (s *SyncRequestPacket) Header() Header    { return s.MessageHeader }
 func (s *SyncRequestPacket) SetHeader(magicNumber uint16, sequenceNumber uint16) {
 	s.MessageHeader.Magic = magicNumber
 	s.MessageHeader.SequenceNumber = sequenceNumber
@@ -158,12 +158,12 @@ func (s *SyncRequestPacket) FromBytes(buffer []byte) error {
 }
 
 type SyncReplyPacket struct {
-	MessageHeader UDPHeader
+	MessageHeader Header
 	RandomReply   uint32
 }
 
-func (s *SyncReplyPacket) Type() UDPMessageType { return SyncReplyMsg }
-func (s *SyncReplyPacket) Header() UDPHeader    { return s.MessageHeader }
+func (s *SyncReplyPacket) Type() MessageType { return SyncReplyMsg }
+func (s *SyncReplyPacket) Header() Header    { return s.MessageHeader }
 func (s *SyncReplyPacket) SetHeader(magicNumber uint16, sequenceNumber uint16) {
 	s.MessageHeader.Magic = magicNumber
 	s.MessageHeader.SequenceNumber = sequenceNumber
@@ -192,13 +192,13 @@ func (s *SyncReplyPacket) FromBytes(buffer []byte) error {
 }
 
 type QualityReportPacket struct {
-	MessageHeader  UDPHeader
+	MessageHeader  Header
 	FrameAdvantage int8
 	Ping           uint64
 }
 
-func (q *QualityReportPacket) Type() UDPMessageType { return QualityReportMsg }
-func (q *QualityReportPacket) Header() UDPHeader    { return q.MessageHeader }
+func (q *QualityReportPacket) Type() MessageType { return QualityReportMsg }
+func (q *QualityReportPacket) Header() Header    { return q.MessageHeader }
 func (q *QualityReportPacket) SetHeader(magicNumber uint16, sequenceNumber uint16) {
 	q.MessageHeader.Magic = magicNumber
 	q.MessageHeader.SequenceNumber = sequenceNumber
@@ -231,12 +231,12 @@ func (q *QualityReportPacket) FromBytes(buffer []byte) error {
 }
 
 type QualityReplyPacket struct {
-	MessageHeader UDPHeader
+	MessageHeader Header
 	Pong          uint64
 }
 
-func (q *QualityReplyPacket) Type() UDPMessageType { return QualityReplyMsg }
-func (q *QualityReplyPacket) Header() UDPHeader    { return q.MessageHeader }
+func (q *QualityReplyPacket) Type() MessageType { return QualityReplyMsg }
+func (q *QualityReplyPacket) Header() Header    { return q.MessageHeader }
 func (q *QualityReplyPacket) SetHeader(magicNumber uint16, sequenceNumber uint16) {
 	q.MessageHeader.Magic = magicNumber
 	q.MessageHeader.SequenceNumber = sequenceNumber
@@ -266,8 +266,8 @@ func (q *QualityReplyPacket) FromBytes(buffer []byte) error {
 }
 
 type InputPacket struct {
-	MessageHeader     UDPHeader
-	PeerConnectStatus []UdpConnectStatus
+	MessageHeader     Header
+	PeerConnectStatus []ConnectStatus
 	StartFrame        uint32
 
 	DisconectRequested bool
@@ -278,8 +278,8 @@ type InputPacket struct {
 	Bits               []byte
 }
 
-func (i *InputPacket) Type() UDPMessageType { return InputMsg }
-func (i *InputPacket) Header() UDPHeader    { return i.MessageHeader }
+func (i *InputPacket) Type() MessageType { return InputMsg }
+func (i *InputPacket) Header() Header    { return i.MessageHeader }
 func (i *InputPacket) SetHeader(magicNumber uint16, sequenceNumber uint16) {
 	i.MessageHeader.Magic = magicNumber
 	i.MessageHeader.SequenceNumber = sequenceNumber
@@ -351,7 +351,7 @@ func (i *InputPacket) FromBytes(buffer []byte) error {
 
 	i.MessageHeader.FromBytes(buffer)
 	totalConnectionStatus := buffer[5]
-	i.PeerConnectStatus = make([]UdpConnectStatus, totalConnectionStatus)
+	i.PeerConnectStatus = make([]ConnectStatus, totalConnectionStatus)
 	pcsSize := i.PeerConnectStatus[0].Size()
 	offset := 6
 	for p := 0; p < int(totalConnectionStatus); p++ {
@@ -397,12 +397,12 @@ func (i InputPacket) String() string {
 }
 
 type InputAckPacket struct {
-	MessageHeader UDPHeader
+	MessageHeader Header
 	AckFrame      int32
 }
 
-func (i *InputAckPacket) Type() UDPMessageType { return InputAckMsg }
-func (i *InputAckPacket) Header() UDPHeader    { return i.MessageHeader }
+func (i *InputAckPacket) Type() MessageType { return InputAckMsg }
+func (i *InputAckPacket) Header() Header    { return i.MessageHeader }
 func (i *InputAckPacket) SetHeader(magicNumber uint16, sequenceNumber uint16) {
 	i.MessageHeader.Magic = magicNumber
 	i.MessageHeader.SequenceNumber = sequenceNumber
@@ -432,11 +432,11 @@ func (i *InputAckPacket) FromBytes(buffer []byte) error {
 func (i *InputAckPacket) String() string { return "input ack.\n" }
 
 type KeepAlivePacket struct {
-	MessageHeader UDPHeader
+	MessageHeader Header
 }
 
-func (k *KeepAlivePacket) Type() UDPMessageType { return KeepAliveMsg }
-func (k *KeepAlivePacket) Header() UDPHeader    { return k.MessageHeader }
+func (k *KeepAlivePacket) Type() MessageType { return KeepAliveMsg }
+func (k *KeepAlivePacket) Header() Header    { return k.MessageHeader }
 func (k *KeepAlivePacket) SetHeader(magicNumber uint16, sequenceNumber uint16) {
 	k.MessageHeader.Magic = magicNumber
 	k.MessageHeader.SequenceNumber = sequenceNumber
@@ -457,9 +457,9 @@ func (k *KeepAlivePacket) FromBytes(buffer []byte) error {
 	return nil
 }
 
-func NewUDPMessage(t UDPMessageType) UDPMessage {
-	header := UDPHeader{HeaderType: uint8(t)}
-	var msg UDPMessage
+func NewMessage(t MessageType) Message {
+	header := Header{HeaderType: uint8(t)}
+	var msg Message
 	switch t {
 	case SyncRequestMsg:
 		msg = &SyncRequestPacket{
@@ -488,7 +488,7 @@ func NewUDPMessage(t UDPMessageType) UDPMessage {
 	return msg
 }
 
-func EncodeMessage(packet UDPMessage) ([]byte, error) {
+func EncodeMessage(packet Message) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	encErr := enc.Encode(&packet)
@@ -498,10 +498,10 @@ func EncodeMessage(packet UDPMessage) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func DecodeMessage(buffer []byte) (UDPMessage, error) {
+func DecodeMessage(buffer []byte) (Message, error) {
 	buf := bytes.NewBuffer(buffer)
 	dec := gob.NewDecoder(buf)
-	var msg UDPMessage
+	var msg Message
 	var err error
 
 	if err = dec.Decode(&msg); err != nil {
@@ -510,7 +510,7 @@ func DecodeMessage(buffer []byte) (UDPMessage, error) {
 	return msg, nil
 }
 
-func DecodeMessageBinary(buffer []byte) (UDPMessage, error) {
+func DecodeMessageBinary(buffer []byte) (Message, error) {
 	msgType, err := GetPacketTypeFromBuffer(buffer)
 	if err != nil {
 		return nil, err
@@ -571,12 +571,12 @@ func DecodeMessageBinary(buffer []byte) (UDPMessage, error) {
 	}
 }
 
-func GetPacketTypeFromBuffer(buffer []byte) (UDPMessageType, error) {
+func GetPacketTypeFromBuffer(buffer []byte) (MessageType, error) {
 	if buffer == nil {
 		return 0, errors.New("nil buffer")
 	}
 	if len(buffer) < 5 {
 		return 0, errors.New("invalid header")
 	}
-	return UDPMessageType(buffer[4]), nil
+	return MessageType(buffer[4]), nil
 }
