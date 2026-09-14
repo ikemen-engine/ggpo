@@ -53,8 +53,16 @@ type sendRequest struct {
 	remotePort int
 }
 
-func NewUdp(messageHandler MessageHandler, localPort int) Udp {
+func NewUdp(messageHandler MessageHandler, localPort int) (Udp, error) {
 	u := Udp{}
+	u.messageHandler = messageHandler
+	u.localPort = localPort
+	util.Log.Printf("binding udp socket to port %d.\n", localPort)
+	var err error
+	u.listener, err = net.ListenPacket("udp", "0.0.0.0:"+strconv.Itoa(localPort))
+	if err != nil {
+		return u, err
+	}
 
 	u.sendChan = make(chan sendRequest, 256) // Create a buffered channel
 
@@ -69,13 +77,7 @@ func NewUdp(messageHandler MessageHandler, localPort int) Udp {
 		}
 	}()
 
-	u.messageHandler = messageHandler
-	portStr := strconv.Itoa(localPort)
-
-	u.localPort = localPort
-	util.Log.Printf("binding udp socket to port %d.\n", localPort)
-	u.listener, _ = net.ListenPacket("udp", "0.0.0.0:"+portStr)
-	return u
+	return u, nil
 }
 
 // dst should be sockaddr

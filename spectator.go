@@ -221,7 +221,11 @@ func (s *Spectator) Close() error {
 }
 func (s *Spectator) InitializeConnection(c ...transport.Connection) error {
 	if len(c) == 0 {
-		s.connection = transport.NewUdp(s, s.localPort)
+		connection, err := transport.NewUdp(s, s.localPort)
+		if err != nil {
+			return err
+		}
+		s.connection = connection
 		return nil
 	}
 	s.connection = c[0]

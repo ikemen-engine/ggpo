@@ -855,7 +855,11 @@ func (p *Peer) CheckDesync() {
 
 func (p *Peer) InitializeConnection(t ...transport.Connection) error {
 	if len(t) == 0 {
-		p.connection = transport.NewUdp(p, p.localPort)
+		connection, err := transport.NewUdp(p, p.localPort)
+		if err != nil {
+			return err
+		}
+		p.connection = connection
 		return nil
 	}
 	p.connection = t[0]
