@@ -629,15 +629,15 @@ func TestSpectatorBackendSetDisconnectNotifyStartError(t *testing.T) {
 	}
 }
 
-func TestSpectatorBackendCloseError(t *testing.T) {
+func TestSpectatorBackendCloseBeforeInitialize(t *testing.T) {
 	session := mocks.NewFakeSession()
 	hostIp := "127.2.1.1"
 	hostPort := 6001
 	localPort := 6000
 	stb := ggpo.NewSpectator(&session, localPort, 2, 4, hostIp, hostPort)
 	err := stb.Close()
-	if err == nil {
-		t.Errorf("The code did not error when using an unsupported Feature.")
+	if err != nil {
+		t.Errorf("Closing an uninitialized spectator failed: %v", err)
 	}
 }
 func TestSpectatorBackendAddPlayerError(t *testing.T) {

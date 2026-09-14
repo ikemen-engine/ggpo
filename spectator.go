@@ -217,7 +217,10 @@ func (s *Spectator) SetDisconnectNotifyStart(timeout int) error {
 	return Error{Code: ErrorCodeInvalidRequest, Name: "ErrorCodeInvalidRequest"}
 }
 func (s *Spectator) Close() error {
-	return Error{Code: ErrorCodeInvalidRequest, Name: "ErrorCodeInvalidRequest"}
+	if s.connection != nil {
+		s.connection.Close()
+	}
+	return nil
 }
 func (s *Spectator) InitializeConnection(c ...transport.Connection) error {
 	if len(c) == 0 {

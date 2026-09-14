@@ -306,7 +306,7 @@ func (u *UdpProtocol) OnLoopPoll(timeFunc polling.FuncTimeType) bool {
 		}
 		break
 	case RunningState:
-		if u.state.lastInputPacketRecvTime == 0 || u.state.lastInputPacketRecvTime+RunningRetryInterval > now {
+		if u.state.lastInputPacketRecvTime == 0 || u.state.lastInputPacketRecvTime+RunningRetryInterval <= now {
 			util.Log.Printf("Haven't exchanged packets in a while (last received:%d  last sent:%d).  Resending.\n",
 				u.lastRecievedInput.Frame, u.lastSentInput.Frame)
 			err := u.SendPendingOutput()

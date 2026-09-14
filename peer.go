@@ -98,6 +98,10 @@ func (p *Peer) Close() error {
 			s.Close()
 		}
 	}
+	// InitializeConnection may succeed before any remote endpoint is added.
+	if p.connection != nil {
+		p.connection.Close()
+	}
 	return nil
 }
 func (p *Peer) Idle(timeout int, timeFunc ...polling.FuncTimeType) error {
@@ -630,9 +634,12 @@ func (p *Peer) DisconnectPlayerQueue(queue int, syncto int) {
 	p.localConnectStatus[queue].Disconnected = true
 	p.localConnectStatus[queue].LastFrame = int32(syncto)
 
-	if syncto < frameCount {
+	// LastFrame may be -1 before the first remote input.
+	// Keep that sentinel out of the saved-state lookup.
+	rollbackFrame := util.Max(syncto, 0)
+	if rollbackFrame < frameCount {
 		util.Log.Printf("adjusting simulation to account for the fact that %d disconnected @ %d.\n", queue, syncto)
-		p.sync.AdjustSimulation(syncto)
+		p.sync.AdjustSimulation(rollbackFrame)
 		util.Log.Printf("Finished adjusting simulation.\n")
 	}
 
