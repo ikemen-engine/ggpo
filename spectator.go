@@ -116,6 +116,10 @@ func (s *Spectator) SyncInput(disconnectFlags *int) ([][]byte, error) {
 	return values, nil
 }
 
+func (s *Spectator) SyncInputConfirmed(disconnectFlags *int) ([][]byte, error) {
+	return s.SyncInput(disconnectFlags)
+}
+
 func (s *Spectator) AdvanceFrame(checksum uint32) error {
 	util.Log.Printf("End of frame (%d)...\n", s.nextInputToSend-1)
 	s.Idle(0)
